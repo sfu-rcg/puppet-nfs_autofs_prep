@@ -9,5 +9,6 @@ description 'UNKNOWN'
 project_page 'UNKNOWN'
 
 ## Add dependencies, if any:
-dependency 'asasfu-nfs', branch, krb-version, '>= 1.4.2b'
-dependency 'puppetlabs-stdlib', '>= 1.2.0'
+dependency 'asasfu/puppet-nfs', 'branch => krb-version', '>= 1.4.2b'
+dependency 'puppetlabs/puppetlabs-stdlib', '>= 1.2.0'
+dependency 'dalen/puppet-stdlib', '>= 1.2.0'
