@@ -4,7 +4,7 @@ class nfs_autofs_prep {
   file { '/var/sandbox/nfsmounts':
     ensure  => file,
     content => $filesrc,
-    replace => no,
+    replace => yes,
   }
 
   $sharenames = query_resources(false, ['and',['=', 'type', 'Nfs::Server::Export::Configure'],['not',['=', 'tag', 'undef']]], false)
