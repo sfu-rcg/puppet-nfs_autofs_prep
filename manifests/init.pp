@@ -7,8 +7,7 @@ class nfs_autofs_prep {
     replace => no,
   }
 
-  $sharenames = pdbresourcequery(['and',['=', 'type', 'Nfs::Server::Export::Configure'],['not',['=', 'tag', 'undef']]])
-
+  $sharenames = query_resources(false, ['and',['=', 'type', 'Nfs::Server::Export::Configure'],['not',['=', 'tag', 'undef']]], false)
 
   # DO NOT modify this line to make it mutiple readable lines, inline_templates introduce spaces whenever whitespace is available at all
   $sharenames_count = inline_template('<%- count = 0 -%><%- sharenames.each do |source_key| -%><%= count -%>,<%- count = count.to_i + 1 -%><%- end -%>')
