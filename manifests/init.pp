@@ -6,6 +6,11 @@ class nfs_autofs_prep {
     content => $filesrc,
     replace => yes,
   }
+  file { '/usr/share/augeas/lenses/dist/nfstest.aug':
+    ensure  => file,
+    content => template('nfs_autofs_prep/nfstest.aug'),
+    replace => no,
+  }
 
   $sharenames = query_resources(false, ['and',['=', 'type', 'Nfs::Server::Export::Configure'],['not',['=', 'tag', 'undef']]], false)
 
