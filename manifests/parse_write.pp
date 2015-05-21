@@ -10,9 +10,9 @@ define nfs_autofs_prep::parse_write($array_dump = [],$file = '/var/sandbox/nfsmo
   augeas { "${result_tag} ${result_certname} ${result_title}":
     lens    => 'Nfstest.lns',
     incl    => "${file}",
-    require => File["${file}" ],
+    require => [ File["/usr/share/augeas/lenses/dist/nfstest.aug"], File["${file}" ] ],
     context => "/files${file}",
-    changes => [ "set $result_tag/FS/server/$number $result_certname:$result_title",
+    changes => [ "set $result_tag/FS/01 $result_certname:$result_title",
                  "set $result_tag/owner asa188"
                ]
 

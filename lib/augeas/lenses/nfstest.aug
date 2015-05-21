@@ -1,56 +1,34 @@
-(* OpenVPN module for Augeas
- Author: Raphael Pinson <raphink@gmail.com>
+(* Nfstest module for Augeas
+ Author: Adam S <asa188@sfu.ca>
 
- Reference: http://openvpn.net/index.php/documentation/howto.html
 *)
 
 
 module Nfstest =
+  autoload xfm
 (************************************************************************
  *                           USEFUL PRIMITIVES
  *************************************************************************)
 
-let peol    = del /\n*/ "" 
 let eol    = Util.eol
-let indent = Util.indent
 
 (* Define separators *)
-let sep    = Util.del_ws_spc
 let sepc (pat:regexp) (default:string)
                        = Sep.opt_space . del pat default
 
 let sep_eq    = sepc "=" "="
-let sep_comma      = del (Rx.opt_space . "," . Rx.opt_space) ","
-let sep_comma_old    = del /,[ \t]*/ ", " 
-let sep_comma_short    = del /[,]+/ ","
-let sep_colon    = del ":" ":" 
-let colon_opt_nil  = del /\:+?/ "" 
-let comma_opt_nil = del /[ \t]+?,+?[ \t]+?/ ","
-let sep_lsbracket  = sepc "[" "["
-let sep_rsbracket  = sepc "]" "]"
+let sep_comma    = sepc "," ","
+let comma_opt_nil = del /[ \t]+?,+?[ \t]+?/ ""
+let comma_opt_comma = del /[ \t]+?,+?[ \t]+?/ ", "
+let sep_lsbracket  = sepc "[ " "[ "
+let sep_rsbracket  = sepc " ]" " ]"
 
 (* Define value regexps *)
-let ip_re  = Rx.ipv4
-let num_re = Rx.integer
-let fn_re  = /[^#; \t\n][^#;\n]*[^#; \t\n]|[^#; \t\n]/
 let an_re  = /[a-z0-9_\-]*/
-(*let fs_re  = /[A-Za-z0-9._\-]+[^\:]*/ *)
-let fs_re  = /[A-Za-z0-9\/\:\._\-]*/ 
-let fs_re_comma  = ( /[A-Za-z0-9\/\:\._\-]+[,]+/ )
-(*let fs_re  = /[^\:]*/*)
-(* let fs_re  = /[A-Za-z0-9\.\-_][^\:,\/]*/ *)
-let share_re  = /[A-Za-z\/0-9\._]*/
-
-let comma_re = del /,?[ \t]+[^[A-Za-z\/0-9._]*]*/ ", "
+let fs_re  = /[A-Za-z0-9\/\:\._\-]+/ 
 
 (* Define store aliases *)
-let ip     = store ip_re
-let num    = store num_re
-let filename = store fn_re
 let fs_alias = store fs_re
-let fs_alias_comma = store fs_re_comma
-let share_alias = store share_re
-let sto_to_dquote = store /[^"\n]+/   (* " Emacs, relax *)
 
 (* define comments and empty lines *)
 let comment = Util.comment_generic /[ \t]*[;#][ \t]*/ "# "
@@ -66,13 +44,30 @@ let single_entry (kw:regexp) (re:regexp)
 let single_own = single_entry single_an  an_re
 
 
+(*** Items from build.aug  ******)
+
+let opt_list (lns:lens) (sep:lens) = lns . ( sep . lns )*
+
+let key_value_line_brackets (kw:regexp) (sep:lens) (sto:lens) (ls_bracket:lens) (rs_bracket:lens) =
+                                   [ key kw . sep . ls_bracket . sto . rs_bracket . eol ]
+
+let key_value_line (kw:regexp) (sep:lens) (sto:lens) =
+                                   [ key kw . sep . sto . eol ]
+
+
 let fs (kw:regexp) (sq:string) =
                     let value = fs_alias in 
-                    [ key kw . sep_eq . sep_lsbracket
-                    . [ label "server" . [ seq "servername" . comma_opt_nil . value ]* ] . sep_rsbracket . comment_or_eol
+                    [ key kw . sep_eq . sep_lsbracket 
+                    . [ label "server" . [ seq sq . comma_opt_nil . value ]* ] . sep_rsbracket . comment_or_eol
 		    ]
 
+let entry_list_nocomment (kw:regexp) (sep:lens) (sto:regexp) (list_sep:lens) =
+  let list = counter "elem"
+      . opt_list [ seq "elem" . store sto ] list_sep
+  in key_value_line kw sep (Sep.opt_space . list)
+
 let other         = fs "FS" "servername"
+let otherlist         = entry_list_nocomment "FS" sep_eq fs_re comma_opt_comma
 
 
 (************************************************************************
@@ -82,7 +77,6 @@ let other         = fs "FS" "servername"
  *                        ENTRY
  * puppet.conf uses standard INI File entries
  *************************************************************************)
-(*let entry   = IniFile.indented_entry IniFile.entry_re sep_eq comment *)
 let entry   = IniFile.indented_entry /[a-b]+/ sep_eq comment
 
 
@@ -90,10 +84,13 @@ let entry   = IniFile.indented_entry /[a-b]+/ sep_eq comment
  *                        RECORD
  * puppet.conf uses standard INI File records
  *************************************************************************)
-let title   = IniFile.title ( IniFile.record_re - ".enscimage" )
-let record  = IniFile.record title ( single_own | other | entry )
+let title   = IniFile.title ( IniFile.record_re - ".comments" )
+let record  = IniFile.record title ( single_own | otherlist | entry )
 
-let record_anon = [ label ".enscimage" . ( entry | empty )+ ]
+let record_anon = [ label ".comments" . ( entry | empty )+ ]
 
-(*let lns    = ( comment | empty | single | flag | other )*  *)
 let lns = record_anon? . record* 
+
+let filter = (incl "/var/sandbox/nfsmounts")
+
+let xfm = transform lns filter
